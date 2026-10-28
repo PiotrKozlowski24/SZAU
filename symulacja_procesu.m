@@ -30,7 +30,7 @@ for n = 1:N-1
     k2 = model_procesu(x(:,n)+dt*k1/2,  F1(n), FD, C1, C2, alpha1, alpha2);
     k3 = model_procesu(x(:,n)+dt*k2/2,  F1(n), FD, C1, C2, alpha1, alpha2);
     k4 = model_procesu(x(:,n)+dt*k3,    F1(n), FD, C1, C2, alpha1, alpha2);
-    x(:,n+1) = max(x(:,n) + dt/6*(k1 + 2*k2 + 2*k3 + k4), 0);
+    x(:,n+1) = x(:,n) + dt/6*(k1 + 2*k2 + 2*k3 + k4);
 end
 
 %% Wyniki

@@ -1,5 +1,5 @@
 function dx = model_liniowy(x, F1, F1_0, FD, C1, C2, a1, a2)
-% Model dwoch zbiornikow zlinearyzowany w punkcie pracy F1_0, x = [V1; V2]
+% Model dwoch zbiornikow zlinearyzowany w punkcie pracy F1_0 i FD, x = [V1; V2]
 % Zwraca pochodne dx = [dV1/dt; dV2/dt]
     % punkt pracy (stan ustalony)
     F2_0 = F1_0 + FD;
