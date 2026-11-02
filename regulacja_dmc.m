@@ -33,10 +33,22 @@ D = 200;           % horyzont dynamiki
 s = odp_skok(C1, C2, alpha1, alpha2, ...
              FD0, F1_0, tau, dt, D);
 
+%% Wykres odpowiedzi skokowej s
+ts = (1:D)' * dt;
+
+figure('Name', 'Odpowiedź skokowa obiektu');
+stairs(ts, s, '--', 'Color', [0 0.447 0.741], 'LineWidth', 0.8); hold on;
+scatter(ts, s, 12, [0.85 0.325 0.098], 'filled');
+grid on;
+xlabel('Czas t [s]');
+ylabel('s');
+title('Odpowiedź skokowa obiektu');
+legend('odpowiedź skokowa', 'punkty próbkowania', 'Location', 'southeast');
+    
 %% Parametry regulatora DMC
 N = 100;           % horyzont predykcji
 Nu = 10;           % horyzont sterowania
-lambda = 1.0;      % wspolczynnik kary za zmiany sterowania
+lambda = 10;      % wspolczynnik kary za zmiany sterowania
 
 % Macierze regulatora liczone raz
 [Ke, Mp] = dmc_macierze(D, N, Nu, lambda, s);
@@ -55,11 +67,16 @@ end
 %% Scenariusze
 % Scenariusz 1: skoki wartosci zadanej, FD stale
 t_zad = [0 100 300 500 1000 1600];        % [s] chwile skokow
-w_zad = [h2_0 8 5 10 3 h2_0];                % [cm] kolejne wartosci zadane h2
+w_zad = [h2_0 8 5 10 3 h2_0];             % [cm] kolejne wartosci zadane h2
 
-% Scenariusz 2: skoki zaklocenia FD, wartosc zadana stala
-t_FD = [0 300 700 1100 1500];         % [s] chwile skokow
-w_FD = [10 15 5 20 10];               % [cm^3/s] kolejne wartosci FD
+% Scenariusz 2: dwie wartosci zadane (punkt pracy i inna), po 2 skoki FD dla kazdej
+t_zad2 = [0 1100];                        % [s] chwile zmiany wartosci zadanej
+w_zad2 = [h2_0 13];                        % [cm] punkt pracy, potem inna wartosc
+
+t_FD = [0 200 500 800 2300 3100 ];             % [s] chwile skokow FD
+w_FD = [10 15 5 10 15 5];                   % [cm^3/s] kolejne wartosci FD
+% h2_zad = h2_0: skoki FD w 250 s i 600 s
+% h2_zad = 9:    skoki FD w 1300 s i 1650 s
 
 % Przebiegi w czasie dla obu scenariuszy (kolumna = scenariusz)
 h2_zad_all = h2_0 * ones(K+1, 2);
@@ -67,6 +84,10 @@ FD_all = FD0 * ones(K+1, 2);
 
 for i = 1:length(t_zad)
     h2_zad_all(t >= t_zad(i), 1) = w_zad(i);
+end
+
+for i = 1:length(t_zad2)
+    h2_zad_all(t >= t_zad2(i), 2) = w_zad2(i);
 end
 
 for i = 1:length(t_FD)
@@ -88,9 +109,9 @@ for sc = 1:2
     x_nl = zeros(2, K+1);
     x_nl(:,1) = x0;
 
-    % Historie w postaci odchylen od punktu pracy
-    u_hist = zeros(D,1);
-    y_hist = zeros(D,1);
+    % Historie w wartosciach bezwzglednych (start z punktu pracy)
+    u_hist = F1_0 * ones(D,1);
+    y_hist = h2_0 * ones(D,1);
 
     % Sterowanie zadane przez regulator i doprowadzone do obiektu
     F1_cmd = F1_0 * ones(K+1,1);
@@ -101,21 +122,19 @@ for sc = 1:2
 
         %% 1. Pomiar wyjscia obiektu nieliniowego
         h2_meas = sqrt(max(x_nl(2,n), 0) / C2);
-        y_dev = h2_meas - h2_0;
-        y_hist = [y_hist(2:end); y_dev];
+        y_hist = [y_hist(2:end); h2_meas];
 
         %% 2. Sterowanie z regulatora DMC
-        % Wartosc zadana jako odchylenie od punktu pracy
-        y_zad = h2_zad_vec(n) - h2_0;
+        y_zad = h2_zad_vec(n);
 
         u = regulator_dmc(Ke, Mp, u_hist, y_hist, y_zad);
 
         % Ograniczenie rzeczywistego przeplywu F1
-        u = min(max(u, F1_min - F1_0), F1_max - F1_0);
+        u = min(max(u, F1_min), F1_max);
 
-        F1_cmd(n) = F1_0 + u;
+        F1_cmd(n) = u;
         u_hist = [u_hist(2:end); u];
-
+        
         %% 3. Opoznienie wejscia
         idx_opoz = n - delay_steps;
 
